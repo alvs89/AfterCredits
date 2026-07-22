@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Tag } from 'lucide-react';
-import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
-import { db } from '../db/db';
-import { SearchableDropdown } from './SearchableDropdown';
-import { MediaType, WatchStatus, MediaEntry } from '../types';
+import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
+import { db } from '../../db/db';
+import { SearchableDropdown } from '../common/SearchableDropdown';
+import { MediaType, WatchStatus, MediaEntry } from '../../types';
 
 const PREDEFINED_GENRES = [
   'Action', 'Adventure', 'Comedy', 'Documentary', 'Drama', 'Fantasy', 

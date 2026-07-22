@@ -12,7 +12,7 @@ import { cn } from './lib/utils';
 import { Dashboard } from './pages/Dashboard';
 import { MediaList } from './pages/MediaList';
 import { Statistics } from './pages/Statistics';
-import { AddEntryModal } from './components/AddEntryModal';
+import { AddEntryModal } from './components/entry/AddEntryModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'stats'>('dashboard');

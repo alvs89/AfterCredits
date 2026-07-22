@@ -4,9 +4,9 @@ import { db } from '../db/db';
 import { Clock, Star, PlayCircle, Trophy, Calendar, Edit2, Trash2, Search, Eye } from 'lucide-react';
 import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
 import { WatchStatus, MediaEntry } from '../types';
-import { ViewEntryModal } from '../components/ViewEntryModal';
-import { AddEntryModal } from '../components/AddEntryModal';
-import { ConfirmModal } from '../components/ConfirmModal';
+import { ViewEntryModal } from '../components/entry/ViewEntryModal';
+import { AddEntryModal } from '../components/entry/AddEntryModal';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 
 export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boolean, onNavigate: (tab: string) => void, onAdd: () => void }) {
   const [viewingEntry, setViewingEntry] = useState<MediaEntry | null>(null);

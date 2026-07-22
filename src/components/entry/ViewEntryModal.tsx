@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MediaEntry, JournalEntry } from '../types';
+import { MediaEntry, JournalEntry } from '../../types';
 import { X, Star, Calendar, Edit2, Save, Maximize2, Minimize2, ChevronLeft, ChevronRight, Plus, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
-import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
-import { db } from '../db/db';
+import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
+import { db } from '../../db/db';
 import ReactQuill from 'react-quill-new';
-import { ConfirmModal } from './ConfirmModal';
+import { ConfirmModal } from '../common/ConfirmModal';
 import 'react-quill-new/dist/quill.snow.css';
 
 export function ViewEntryModal({ 

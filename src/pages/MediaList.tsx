@@ -4,10 +4,10 @@ import { db } from '../db/db';
 import { Search, Filter, Star, Eye, Heart, MoreVertical, Edit2, Trash2, Calendar } from 'lucide-react';
 import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
 import { MediaType, WatchStatus, MediaEntry } from '../types';
-import { AddEntryModal } from '../components/AddEntryModal';
-import { ViewEntryModal } from '../components/ViewEntryModal';
-import { ConfirmModal } from '../components/ConfirmModal';
-import { SearchableDropdown } from '../components/SearchableDropdown';
+import { AddEntryModal } from '../components/entry/AddEntryModal';
+import { ViewEntryModal } from '../components/entry/ViewEntryModal';
+import { ConfirmModal } from '../components/common/ConfirmModal';
+import { SearchableDropdown } from '../components/common/SearchableDropdown';
 
 export function MediaList({ isDarkMode }: { isDarkMode: boolean }) {
   const [searchQuery, setSearchQuery] = useState('');
