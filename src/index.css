@@ -1,0 +1,250 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Quill Editor Overrides */
+.custom-quill-container .quill {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.custom-quill-container .ql-toolbar {
+  position: relative;
+  z-index: 50;
+  border: none !important;
+  border-bottom: 1px solid rgba(150, 150, 150, 0.2) !important;
+  padding: 8px 0 !important;
+  margin-bottom: 8px;
+}
+.dark .custom-quill-container .ql-toolbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-quill-container .ql-container {
+  border: none !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+  
+  font-size: 14px;
+}
+
+.custom-quill-container .ql-editor {
+  padding: 0 12px 0 0 !important;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  flex: 1;
+  color: inherit;
+}
+
+.custom-quill-container .ql-editor.ql-blank::before {
+  color: rgba(0, 0, 0, 0.4);
+  left: 0;
+  font-style: normal;
+}
+.dark .custom-quill-container .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.custom-quill-container .ql-toolbar button {
+  color: inherit !important;
+  opacity: 0.6;
+}
+
+.custom-quill-container .ql-toolbar button:hover,
+.custom-quill-container .ql-toolbar button.ql-active {
+  color: #3B82F6 !important;
+  opacity: 1;
+}
+
+.custom-quill-container .ql-toolbar .ql-stroke {
+  stroke: currentColor !important;
+  opacity: 0.6;
+}
+
+.custom-quill-container .ql-toolbar button:hover .ql-stroke,
+.custom-quill-container .ql-toolbar button.ql-active .ql-stroke,
+.custom-quill-container .ql-toolbar .ql-picker-label:hover .ql-stroke,
+.custom-quill-container .ql-toolbar .ql-picker-label.ql-active .ql-stroke {
+  stroke: #3B82F6 !important;
+  opacity: 1;
+}
+
+.custom-quill-container .ql-toolbar .ql-fill {
+  fill: currentColor !important;
+  opacity: 0.6;
+}
+
+.custom-quill-container .ql-toolbar button:hover .ql-fill,
+.custom-quill-container .ql-toolbar button.ql-active .ql-fill,
+.custom-quill-container .ql-toolbar .ql-picker-label:hover .ql-fill,
+.custom-quill-container .ql-toolbar .ql-picker-label.ql-active .ql-fill {
+  fill: #3B82F6 !important;
+  opacity: 1;
+}
+
+.custom-quill-container .ql-picker {
+  color: currentColor !important;
+  opacity: 0.6;
+}
+.custom-quill-container .ql-picker-label:hover,
+.custom-quill-container .ql-picker-label.ql-active {
+  color: #3B82F6 !important;
+  opacity: 1;
+}
+
+.custom-quill-container .ql-picker-options {
+  z-index: 50 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  background-color: #fff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+.dark .custom-quill-container .ql-picker-options {
+  z-index: 50 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  background-color: #1A1D24 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Base styles for editor content */
+.custom-quill-container .ql-editor h1 {
+  
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+  color: inherit;
+}
+
+.custom-quill-container .ql-editor h2 {
+  font-size: 1.25rem;
+  
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: inherit; 
+  opacity: 0.8;
+}
+
+.custom-quill-container .ql-editor a {
+  color: #3B82F6;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.custom-quill-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-quill-container .ql-picker-item {
+  color: inherit !important;
+}
+.dark .custom-quill-container .ql-picker-item {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+.custom-quill-container .ql-picker-item:hover,
+.custom-quill-container .ql-picker-item.ql-selected {
+  color: #3B82F6 !important;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+.custom-quill-container .ql-container {
+  font-family: 'Inter', sans-serif !important;
+}
+.custom-quill-container .ql-editor {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Fix Quill Header Dropdown */
+.custom-quill-container .ql-picker-options {
+  padding: 4px 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  margin-top: 4px !important;
+}
+
+.custom-quill-container .ql-picker.ql-header .ql-picker-item {
+  padding: 6px 16px !important;
+  display: block !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+}
+
+.custom-quill-container .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
+  content: 'Heading 1' !important;
+  font-size: 1.5rem !important;
+  font-weight: bold !important;
+}
+
+.custom-quill-container .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
+  content: 'Heading 2' !important;
+  font-size: 1.25rem !important;
+  font-weight: 500 !important;
+}
+
+.custom-quill-container .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
+  content: 'Heading 3' !important;
+  font-size: 1.125rem !important;
+  font-weight: 500 !important;
+}
+
+.custom-quill-container .ql-picker.ql-header .ql-picker-item:not([data-value])::before {
+  content: 'Normal' !important;
+  font-size: 14px !important;
+}
+
+.custom-quill-container .ql-picker-item {
+  cursor: pointer !important;
+}
+
+.custom-quill-container .ql-picker-item:hover,
+.custom-quill-container .ql-picker-item.ql-selected {
+  color: #3B82F6 !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.dark .custom-quill-container .ql-picker-options {
+  background-color: #1A1D24 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+
+/* Force WCAG compliant theme-aware colors in Quill */
+.custom-quill-container .ql-editor * {
+  color: inherit !important;
+  background-color: transparent !important;
+}
+
+.custom-quill-container .ql-editor {
+  color: inherit !important;
+}
+.ql-editor img { cursor: zoom-in !important; transition: transform 0.2s; }
