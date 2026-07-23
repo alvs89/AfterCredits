@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MediaEntry, JournalEntry } from '../../types';
-import { X, Star, Calendar, Edit2, Save, Maximize2, Minimize2, ChevronLeft, ChevronRight, Plus, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Heart, X, Star, Calendar, Edit2, Save, Maximize2, Minimize2, ChevronLeft, ChevronRight, Plus, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { StarRating } from "../common/StarRating";
 import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
 import { db } from '../../db/db';
-import ReactQuill from 'react-quill-new';
+import ReactQuill, { Quill } from 'react-quill-new';
+
+const ColorStyle = Quill.import('attributors/style/color') as any;
+const BackgroundStyle = Quill.import('attributors/style/background') as any;
+Quill.register(ColorStyle, true);
+Quill.register(BackgroundStyle, true);
 import { ConfirmModal } from '../common/ConfirmModal';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -248,11 +254,26 @@ export function ViewEntryModal({
             )}
             <div className={cn("absolute inset-0 bg-gradient-to-t via-transparent to-transparent pointer-events-none", isDarkMode ? "from-[#1A1D24]" : "from-neutral-50")}></div>
             
-            <div className="absolute bottom-4 left-4 flex gap-1 z-10">
-              <div className="bg-[#3B82F6] text-[#0A0B0E] text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
-                <Star className="w-3.5 h-3.5" />
-                {entry.rating}
+            <div className="absolute top-4 right-4 flex flex-row items-center gap-1.5 z-20">
+              <div className="bg-[#0A0B0E]/80 backdrop-blur-md px-2 py-1 rounded text-xs font-bold text-white flex items-center gap-1 border border-white/10 shadow-sm pointer-events-none">
+                <Star className="w-3 h-3 text-[#3B82F6] fill-[#3B82F6]" />
+                <span>{entry.rating > 0 ? entry.rating.toFixed(1) : '—'}</span>
               </div>
+              <button 
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  const updated = { ...entry, favorite: !entry.favorite, updatedAt: new Date().toISOString() };
+                  await db.media.put(updated);
+                  onClose();
+                }}
+                className="p-1.5 rounded bg-[#0A0B0E]/80 backdrop-blur-md transition-colors hover:bg-white/20 border border-white/10 shadow-sm flex items-center justify-center"
+                aria-label={entry.favorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Heart className={cn("w-4 h-4 transition-colors", entry.favorite ? "fill-red-500 text-red-500" : "text-white/90")} />
+              </button>
+            </div>
+            
+            <div className="absolute bottom-4 left-4 flex gap-1 z-10">
               <div className={cn("text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm", isDarkMode ? "bg-white/10 text-white/80" : "bg-white/60 text-neutral-800")}>
                 {formatMediaType(entry.type)}
               </div>
@@ -489,6 +510,7 @@ export function ViewEntryModal({
                         toolbar: [
                           [{ 'header': [1, 2, 3, false] }],
                           ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'color': [] }, { 'background': [] }],
                           [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                           ['link', 'image', 'clean']
                         ]

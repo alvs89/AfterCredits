@@ -19,7 +19,7 @@ export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
     }, {} as Record<string, number>);
 
     const typeData = Object.entries(typeCount).map(([name, value]) => ({
-      name: name.replace(/_/g, ' '),
+      name: formatMediaType(name as MediaType),
       value
     }));
 
@@ -29,7 +29,7 @@ export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
     }, {} as Record<string, number>);
 
     const statusData = Object.entries(statusCount).map(([name, value]) => ({
-      name: name.replace(/_/g, ' '),
+      name: formatWatchStatus(name as WatchStatus),
       value
     }));
 
@@ -51,7 +51,7 @@ export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
 
   return (
     <div className="space-y-8 pb-12 h-full overflow-y-auto">
-      <h2 className="text-2xl font-semibold mb-6">Library Statistics</h2>
+      <h2 className="text-2xl font-bold mb-6">Library Statistics</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Type Distribution */}

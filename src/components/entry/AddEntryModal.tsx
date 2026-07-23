@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Tag } from 'lucide-react';
 import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
 import { db } from '../../db/db';
-import { SearchableDropdown } from '../common/SearchableDropdown';
+import { SearchableDropdown } from "../common/SearchableDropdown";
+import { StarRating } from "../common/StarRating";
 import { MediaType, WatchStatus, MediaEntry } from '../../types';
 
 const PREDEFINED_GENRES = [
@@ -110,7 +111,7 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
           <X className="w-4 h-4 text-white/70" />
         </button>
 
-        <h2  className="text-3xl font-light  text-[#3B82F6] mb-6">{editingEntry ? 'Edit Archive Entry' : 'New Archive Entry'}</h2>
+        <h2  className="text-3xl font-bold  text-[#3B82F6] mb-6">{editingEntry ? 'Edit Archive Entry' : 'New Archive Entry'}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -171,18 +172,10 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={cn("block text-[10px] font-bold uppercase tracking-widest mb-1", isDarkMode ? "text-white/70" : "text-neutral-600")}>Rating (0-10)</label>
-                  <input 
-                    type="number" 
-                    min="0" max="10" step="0.5"
-                    value={formData.rating}
-                    onChange={e => setFormData({ ...formData, rating: Number(e.target.value) })}
-                    className={cn(
-                      "w-full px-4 py-2 rounded border focus:outline-none text-sm transition-colors", isDarkMode ? "bg-white/5 border-white/10 focus:border-[#3B82F6]/50 text-white" : "bg-white border-neutral-200 focus:border-[#3B82F6] text-neutral-900"
-                    )}
-                  />
+                  <div className="py-2"><StarRating value={formData.rating} onChange={(rating) => setFormData({ ...formData, rating })} isDarkMode={isDarkMode} size="md" /></div>
                 </div>
                 <div>
                   <label className={cn("block text-[10px] font-bold uppercase tracking-widest mb-1", isDarkMode ? "text-white/70" : "text-neutral-600")}>Platform</label>

@@ -74,7 +74,7 @@
 }
 
 .custom-quill-container .ql-toolbar button {
-  color: inherit !important;
+  
   opacity: 0.6;
 }
 
@@ -110,12 +110,13 @@
   opacity: 1;
 }
 
-.custom-quill-container .ql-picker {
+.custom-quill-container .ql-picker-label {
   color: currentColor !important;
   opacity: 0.6;
 }
 .custom-quill-container .ql-picker-label:hover,
-.custom-quill-container .ql-picker-label.ql-active {
+.custom-quill-container .ql-picker-label.ql-active,
+.custom-quill-container .ql-picker.ql-expanded .ql-picker-label {
   color: #3B82F6 !important;
   opacity: 1;
 }
@@ -163,7 +164,7 @@
 }
 
 .custom-quill-container .ql-picker-item {
-  color: inherit !important;
+  
 }
 .dark .custom-quill-container .ql-picker-item {
   color: rgba(255, 255, 255, 0.8) !important;
@@ -238,13 +239,55 @@ body {
 }
 
 
-/* Force WCAG compliant theme-aware colors in Quill */
-.custom-quill-container .ql-editor * {
-  color: inherit !important;
-  background-color: transparent !important;
+
+
+
+.ql-editor img { cursor: zoom-in !important; transition: transform 0.2s; }
+
+.custom-quill-container .ql-picker-label::before,
+.custom-quill-container .ql-picker-item::before {
+  
 }
 
-.custom-quill-container .ql-editor {
-  color: inherit !important;
+.custom-quill-container .ql-picker-label {
+  color: #111 !important;
+  opacity: 1 !important;
 }
-.ql-editor img { cursor: zoom-in !important; transition: transform 0.2s; }
+.dark .custom-quill-container .ql-picker-label {
+  color: #fff !important;
+  opacity: 1 !important;
+}
+.custom-quill-container .ql-picker-label::before,
+.custom-quill-container .ql-picker-item::before {
+  
+}
+.custom-quill-container .ql-picker-options {
+  z-index: 99999 !important;
+  background: #fff !important;
+}
+.dark .custom-quill-container .ql-picker-options {
+  background: #1A1D24 !important;
+}
+.custom-quill-container .ql-toolbar {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+/* Color Picker overrides */
+.custom-quill-container .ql-color-picker .ql-picker-options {
+  padding: 8px !important;
+  width: 152px !important;
+}
+.custom-quill-container .ql-color-picker .ql-picker-item {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 2px !important;
+  margin: 2px !important;
+  border: 1px solid rgba(0,0,0,0.1) !important;
+}
+.dark .custom-quill-container .ql-color-picker .ql-picker-item {
+  border: 1px solid rgba(255,255,255,0.1) !important;
+}
+.custom-quill-container .ql-color-picker .ql-picker-item.ql-selected {
+  border: 2px solid #3B82F6 !important;
+}

@@ -6,7 +6,8 @@ import {
   Settings, 
   Moon, 
   Sun,
-  Plus
+  Plus,
+  Heart
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { Dashboard } from './pages/Dashboard';
@@ -15,7 +16,8 @@ import { Statistics } from './pages/Statistics';
 import { AddEntryModal } from './components/entry/AddEntryModal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'stats'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'favorites' | 'stats'>('dashboard');
+
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -42,10 +44,19 @@ export default function App() {
         isDarkMode ? "border-white/5 bg-[#0F1115]" : "border-neutral-200 bg-white/50 backdrop-blur-xl"
       )}>
         <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#3B82F6] flex items-center justify-center">
-            <div className="w-4 h-4 border-2 border-[#0A0B0E]"></div>
+          <div className="w-8 h-8 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="w-full h-full">
+              <rect width="32" height="32" rx="8" className="fill-[#3B82F6]" />
+              <path d="M12 10.5C12 9.73 12.83 9.25 13.5 9.63L21.32 14.13C21.99 14.52 21.99 15.48 21.32 15.87L13.5 20.37C12.83 20.75 12 20.27 12 19.5V10.5Z" fill="white" />
+              <rect x="3" y="6" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="3" y="14" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="3" y="22" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="26" y="6" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="26" y="14" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="26" y="22" width="3" height="4" rx="1" fill="white" fillOpacity="0.4" />
+            </svg>
           </div>
-          <span  className={cn("text-xl font-bold tracking-tight", isDarkMode ? "text-[#3B82F6]" : "text-neutral-900")}>
+          <span className={cn("text-xl font-bold tracking-tight", isDarkMode ? "text-white" : "text-neutral-900")}>
             AfterCredits
           </span>
         </div>
@@ -64,6 +75,13 @@ export default function App() {
             label="Library" 
             isActive={activeTab === 'library'} 
             onClick={() => setActiveTab('library')} 
+            isDarkMode={isDarkMode}
+          />
+          <NavItem 
+            icon={<Heart className="w-5 h-5" />} 
+            label="Favorites" 
+            isActive={activeTab === 'favorites'} 
+            onClick={() => setActiveTab('favorites')} 
             isDarkMode={isDarkMode}
           />
           <div className="text-[10px] uppercase tracking-[0.2em] opacity-70 mb-2 px-2 mt-6">System</div>
@@ -114,6 +132,7 @@ export default function App() {
           <div className="max-w-6xl mx-auto w-full h-full">
             {activeTab === 'dashboard' && <Dashboard isDarkMode={isDarkMode} onNavigate={(tab) => setActiveTab(tab as any)} onAdd={() => setIsAddModalOpen(true)} />}
             {activeTab === 'library' && <MediaList isDarkMode={isDarkMode} />}
+            {activeTab === 'favorites' && <MediaList isDarkMode={isDarkMode} showOnlyFavorites={true} />}
             {activeTab === 'stats' && <Statistics isDarkMode={isDarkMode} />}
           </div>
         </div>
@@ -142,7 +161,7 @@ function NavItem({ icon, label, isActive, onClick, isDarkMode }: { icon: React.R
       )}
     >
       {isActive && <span className="w-2 h-2 rounded-full bg-[#3B82F6]"></span>}
-      {(!isActive || !isDarkMode) && icon}
+      {!isActive && icon}
       {label}
     </button>
   );
