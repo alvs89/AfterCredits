@@ -5,7 +5,7 @@ Personal media tracking with React and Supabase.
 ## Supabase setup
 
 1. Create a project at https://supabase.com/dashboard.
-2. Open **SQL Editor**, paste all of `supabase/schema.sql`, and click **Run**.
+2. Open **SQL Editor**, paste all of `supabase/migrations/20260820000000_initial_schema.sql`, and click **Run**.
 3. Open **Authentication > Providers > Google**, enable Google, and follow the displayed Google OAuth setup instructions.
 4. In **Authentication > URL Configuration**, set the production Site URL and add any preview deployment URLs you use.
 5. Copy `.env.example` to `.env` and fill in the Project URL and Publishable key from **Project Settings > API**.
@@ -22,3 +22,12 @@ npm run dev
 ## Deployment
 
 Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the deployment platform. Add the deployed URL to Supabase Authentication URL Configuration. The app uses the current deployed origin for the OAuth return URL, so no domain is hardcoded.
+
+## Project structure
+
+```text
+src/                  React application
+server/               Express development and production server
+supabase/migrations/  Database schema and security policies
+scripts/archive/      Historical maintenance utilities
+```
