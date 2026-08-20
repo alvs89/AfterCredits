@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { useData } from '../lib/data-context';
+import React, { useState, useMemo } from 'react';
 import { Heart, Clock, Star, PlayCircle, Trophy, Calendar, Edit2, Trash2, Search, Eye } from 'lucide-react';
 import { StarRating } from "../components/common/StarRating";
 import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
@@ -10,13 +9,14 @@ import { AddEntryModal } from '../components/entry/AddEntryModal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 
 export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boolean, onNavigate: (tab: string) => void, onAdd: () => void }) {
+  const { entries, updateEntry, deleteEntry } = useData();
   const [viewingEntry, setViewingEntry] = useState<MediaEntry | null>(null);
   const [editingEntry, setEditingEntry] = useState<MediaEntry | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
 
   const toggleFavorite = async (entry: MediaEntry) => {
     if (entry.id) {
-      await db.media.update(entry.id, { favorite: !entry.favorite });
+      await updateEntry(entry.id, { favorite: !entry.favorite });
     }
   };
 
@@ -26,12 +26,12 @@ export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boole
   
   const confirmDelete = async () => {
     if (entryToDelete) {
-      await db.media.delete(entryToDelete);
+      await deleteEntry(entryToDelete);
       setEntryToDelete(null);
     }
   };
-  const stats = useLiveQuery(async () => {
-    const all = await db.media.toArray();
+  const stats = useMemo(() => {
+    const all = entries;
     const completed = all.filter(m => m.status === WatchStatus.Completed).length;
     const watching = all.filter(m => m.status === WatchStatus.Watching).length;
     const favorites = all.filter(m => m.favorite).length;
@@ -44,9 +44,9 @@ export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boole
       favorites,
       avgRating
     };
-  });
+  }, [entries]);
 
-  const recent = useLiveQuery(() => db.media.orderBy('updatedAt').reverse().limit(5).toArray());
+  const recent = entries.slice().sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0,5);
 
   return (
     <div className="space-y-8 pb-12">
@@ -75,8 +75,8 @@ export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boole
                 )}
               >
                 <div className={cn("aspect-[2/3] w-full rounded-lg mb-4 overflow-hidden relative flex items-center justify-center font-sans font-bold text-xl", isDarkMode ? "bg-[#1A1D24] text-white/70" : "bg-neutral-100 text-neutral-600")}>
-                  {entry.posterBlob ? (
-                    <img src={URL.createObjectURL(entry.posterBlob)} alt={entry.title} className="w-full h-full object-cover" />
+                  {entry.posterBase64 ? (
+                    <img src={entry.posterBase64} alt={entry.title} className="w-full h-full object-cover" />
                   ) : (
                     <span className="px-4 text-center">{entry.title}</span>
                   )}
@@ -123,22 +123,26 @@ export function Dashboard({ isDarkMode, onNavigate, onAdd }: { isDarkMode: boole
                 </div>
               </div>
               <h3 className={cn("font-bold text-sm leading-tight line-clamp-1 mb-1", isDarkMode ? "text-white" : "text-neutral-900")}>{entry.title}</h3>
-                <div className="mt-auto flex flex-col gap-1 pt-2">
+                <div className="mt-auto flex flex-col w-full">
+                <div className="flex flex-col gap-1 pt-2">
                   <div className={cn("flex items-center justify-between text-[10px]", isDarkMode ? "text-white/60" : "text-neutral-600")}>
                     <span>{entry.platform || 'Unknown'}</span>
                     <span>{formatWatchStatus(entry.status)}</span>
                   </div>
-                  {(entry.dateStarted || entry.dateCompleted) && (
-                    <div className={cn("flex items-center gap-1.5 text-[10px] mt-1", isDarkMode ? "text-white/60" : "text-neutral-600")}>
-                      <Calendar className="w-3 h-3 opacity-60 shrink-0" />
-                      <span className="truncate">
-                        {entry.dateStarted ? new Date(entry.dateStarted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '?'}
-                        {' – '}
-                        {entry.dateCompleted ? new Date(entry.dateCompleted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Present'}
-                      </span>
-                    </div>
-                  )}
+                  <div className={cn("flex items-center gap-1.5 text-[10px] mt-1 min-h-[16px]", isDarkMode ? "text-white/60" : "text-neutral-600")}>
+                    {(entry.dateStarted || entry.dateCompleted) ? (
+                      <>
+                        <Calendar className="w-3 h-3 opacity-60 shrink-0" />
+                        <span className="truncate">
+                          {entry.dateStarted ? new Date(entry.dateStarted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '?'}
+                          {' – '}
+                          {entry.dateCompleted ? new Date(entry.dateCompleted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Present'}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
+              </div>
               </div>
             ))} 
           </div>

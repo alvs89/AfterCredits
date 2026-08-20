@@ -1,18 +1,24 @@
+import { useData } from '../../lib/data-context';
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Plus, Tag } from 'lucide-react';
-import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
-import { db } from '../../db/db';
+import { X, Upload, Plus, Tag, Crop, Image as ImageIcon, Undo2, Redo2 } from 'lucide-react';
+import { cn, formatMediaType, formatWatchStatus, blobToBase64 } from '../../lib/utils';
+import { useCustomOptions } from '../../hooks/useCustomOptions';
+import { useHistoryState } from '../../hooks/useHistoryState';
+import { DeleteOptionDialog } from '../common/DeleteOptionDialog';
 import { SearchableDropdown } from "../common/SearchableDropdown";
 import { StarRating } from "../common/StarRating";
+import { ImageCropper } from "../common/ImageCropper";
+
 import { MediaType, WatchStatus, MediaEntry } from '../../types';
 
 const PREDEFINED_GENRES = [
   'Action', 'Adventure', 'Comedy', 'Documentary', 'Drama', 'Fantasy', 
-  'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Thriller'
+  'Horror', 'Music', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Thriller'
 ];
 
 export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { isOpen: boolean, onClose: () => void, isDarkMode: boolean, editingEntry?: MediaEntry }) {
-  const [formData, setFormData] = useState<Partial<MediaEntry>>({
+  const { entries, addEntry, putEntry, updateEntry, deleteEntry } = useData();
+  const [formData, setFormData, { undo, redo, canUndo, canRedo }] = useHistoryState<Partial<MediaEntry>>({
     title: '',
     type: MediaType.Movie,
     status: WatchStatus.PlanToWatch,
@@ -27,40 +33,51 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
   });
 
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [newGenre, setNewGenre] = useState('');
-  const [customPlatforms, setCustomPlatforms] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('customPlatforms');
-      return saved ? JSON.parse(saved).filter((p: string) => p && p.toLowerCase() !== 'none') : [];
-    } catch {
-      return [];
-    }
-  });
+  const { options: customPlatformsDB, addOption: addPlatform, editOption: editPlatform, deleteOption: deletePlatform, checkInUse: checkPlatformInUse } = useCustomOptions('platform');
+  const { options: customMediaTypesDB, addOption: addMediaType, editOption: editMediaType, deleteOption: deleteMediaType, checkInUse: checkMediaTypeInUse } = useCustomOptions('mediaType');
+  const [deleteDialogConfig, setDeleteDialogConfig] = useState<{ isOpen: boolean; type: 'platform' | 'mediaType'; optionName: string; usageCount: number; } | null>(null);
 
-  const handleAddPlatform = (platform: string) => {
-    if (!customPlatforms.includes(platform) && !['Cineby', 'LokLok', 'Movie Box', 'Netflix', 'StreameX', 'Other'].includes(platform)) {
-      const newCustom = [...customPlatforms, platform];
-      setCustomPlatforms(newCustom);
-      localStorage.setItem('customPlatforms', JSON.stringify(newCustom));
-    }
+  const handleAddPlatform = async (platform: string) => {
+    await addPlatform(platform);
     setFormData({ ...formData, platform });
+  };
+  const handleAddMediaType = async (type: string) => {
+    await addMediaType(type);
+    setFormData({ ...formData, type: type as MediaType });
   };
 
   useEffect(() => {
     if (editingEntry) {
       setFormData(editingEntry);
-      if (editingEntry.posterBlob) {
-        setPosterPreview(URL.createObjectURL(editingEntry.posterBlob));
+      if (editingEntry.posterBase64) {
+        setPosterPreview(editingEntry.posterBase64);
       }
     }
   }, [editingEntry]);
 
-  const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePosterChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFormData({ ...formData, posterBlob: file });
-      setPosterPreview(URL.createObjectURL(file));
+      const base64 = await blobToBase64(file);
+      setFormData(prev => ({ ...prev, originalPosterBase64: base64, cropData: undefined }));
+      const url = URL.createObjectURL(file);
+      setCropImageSrc(url);
     }
+    // reset input
+    e.target.value = '';
+  };
+  
+  const handleCropComplete = async (croppedBlob: Blob, cropData: any) => {
+    const base64 = await blobToBase64(croppedBlob);
+    setFormData(prev => ({ ...prev, posterBase64: base64, cropData }));
+    setPosterPreview(base64);
+    setCropImageSrc(null);
+  };
+  
+  const handleCropCancel = () => {
+    setCropImageSrc(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,15 +99,18 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
       favorite: formData.favorite || false,
       dateStarted: formData.dateStarted || undefined,
       dateCompleted: formData.dateCompleted || undefined,
+      originalPosterBase64: formData.originalPosterBase64,
+      posterBase64: formData.posterBase64,
+      cropData: formData.cropData,
       updatedAt: new Date().toISOString(),
       createdAt: editingEntry ? editingEntry.createdAt : new Date().toISOString(),
     } as MediaEntry;
 
     if (editingEntry && editingEntry.id) {
       entry.id = editingEntry.id;
-      await db.media.put(entry);
+      await putEntry(entry);
     } else {
-      await db.media.add(entry);
+      await addEntry(entry);
     }
     
     onClose();
@@ -117,23 +137,52 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="col-span-1">
               <div className={cn(
-                "aspect-[2/3] rounded-lg border flex flex-col items-center justify-center cursor-pointer relative overflow-hidden transition-colors bg-[#1A1D24]",
-                isDarkMode ? "border-white/10 hover:border-[#3B82F6]/50" : "border-neutral-300 hover:border-neutral-400"
+                "aspect-[2/3] rounded-lg border flex flex-col items-center justify-center relative overflow-hidden transition-colors bg-[#1A1D24] group",
+                isDarkMode ? "border-white/10" : "border-neutral-300"
               )}>
                 {posterPreview ? (
-                  <img src={posterPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <>
+                    <img src={posterPreview} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 backdrop-blur-sm z-20">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (formData.originalPosterBase64) {
+                            setCropImageSrc(formData.originalPosterBase64);
+                          } else if (posterPreview) {
+                            // Fallback
+                            setCropImageSrc(posterPreview);
+                          }
+                        }} 
+                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold w-36 flex items-center justify-center gap-2 transition-colors border border-white/10 cursor-pointer"
+                      >
+                        <Crop className="w-3 h-3" /> Reposition
+                      </button>
+                      <label className="bg-[#3B82F6]/90 hover:bg-[#3B82F6] text-white px-4 py-2 rounded text-xs font-bold w-36 flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-white/20 cursor-pointer m-0">
+                        <ImageIcon className="w-3 h-3" /> Change Image
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handlePosterChange}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                  </>
                 ) : (
-                  <div className="flex flex-col items-center text-white/60 p-4 text-center">
-                    <Upload className="w-6 h-6 mb-2" />
-                    <span className="text-xs font-semibold uppercase tracking-widest">Upload Poster</span>
-                  </div>
+                  <>
+                    <div className="flex flex-col items-center text-white/60 p-4 text-center pointer-events-none z-10">
+                      <Upload className="w-6 h-6 mb-2" />
+                      <span className="text-xs font-semibold uppercase tracking-widest">Upload Poster</span>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handlePosterChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                    />
+                  </>
                 )}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handlePosterChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
               </div>
             </div>
 
@@ -158,7 +207,18 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
                     value={formData.type as string}
                     onChange={(val) => setFormData({ ...formData, type: val as MediaType })}
                     isDarkMode={isDarkMode}
-                    options={Object.values(MediaType).map(t => ({ value: t, label: formatMediaType(t) }))}
+                    allowAdd={true}
+                    addLabel="Add Type"
+                    onAdd={handleAddMediaType}
+                    onEdit={editMediaType}
+                    onDelete={async (val) => {
+                      const usage = await checkMediaTypeInUse(val);
+                      setDeleteDialogConfig({ isOpen: true, type: 'mediaType', optionName: val, usageCount: usage });
+                    }}
+                    options={Array.from(new Map([
+                      ...Object.values(MediaType).map(t => ({ value: t, label: formatMediaType(t) })),
+                      ...customMediaTypesDB.map(t => ({ value: t.value, label: t.name, isEditable: true }))
+                    ].map(item => [item.value, item])).values())}
                   />
                 </div>
                 <div>
@@ -186,13 +246,24 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
                     allowAdd={true}
                     addLabel="Add Platform"
                     onAdd={handleAddPlatform}
+                    onEdit={editPlatform}
+                    onDelete={async (val) => {
+                      const usage = await checkPlatformInUse(val);
+                      setDeleteDialogConfig({ isOpen: true, type: 'platform', optionName: val, usageCount: usage });
+                    }}
                     placeholder="Select or Add Platform..."
-                    options={[
-                      
-                      ...['Cineby', 'LokLok', 'Movie Box', 'Netflix', 'StreameX'].map(p => ({ value: p, label: p })),
-                      ...customPlatforms.filter(p => p && p.toLowerCase() !== 'none').map(p => ({ value: p, label: p })),
-                      { value: 'Other', label: 'Other' }
-                    ]}
+                                        options={Array.from(new Map([
+                      { value: 'Netflix', label: 'Netflix' },
+                      { value: 'Amazon Prime', label: 'Amazon Prime' },
+                      { value: 'Hulu', label: 'Hulu' },
+                      { value: 'Disney+', label: 'Disney+' },
+                      { value: 'HBO Max', label: 'HBO Max' },
+                      { value: 'Apple TV+', label: 'Apple TV+' },
+                      { value: 'Crunchyroll', label: 'Crunchyroll' },
+                      { value: 'Cinema', label: 'Cinema' },
+                      { value: 'Other', label: 'Other' },
+                      ...customPlatformsDB.map(p => ({ value: p.value, label: p.name, isEditable: true }))
+                    ].map(item => [item.value, item])).values())}
                   />
                 </div>
               </div>
@@ -316,6 +387,52 @@ export function AddEntryModal({ isOpen, onClose, isDarkMode, editingEntry }: { i
           </div>
         </form>
       </div>
+
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          isDarkMode={isDarkMode}
+          initialCrop={formData.cropData?.crop}
+          initialZoom={formData.cropData?.zoom}
+        />
+      )}
+      {deleteDialogConfig && (
+        <DeleteOptionDialog
+          isOpen={deleteDialogConfig.isOpen}
+          onClose={() => setDeleteDialogConfig(null)}
+          onConfirm={async (replacement) => {
+            if (deleteDialogConfig.type === 'platform') {
+              await deletePlatform(deleteDialogConfig.optionName, replacement);
+              if (formData.platform === deleteDialogConfig.optionName) {
+                setFormData({ ...formData, platform: replacement || '' });
+              }
+            } else {
+              await deleteMediaType(deleteDialogConfig.optionName, replacement);
+              if (formData.type === deleteDialogConfig.optionName) {
+                setFormData({ ...formData, type: (replacement as MediaType) || MediaType.Movie });
+              }
+            }
+            setDeleteDialogConfig(null);
+          }}
+          optionName={deleteDialogConfig.optionName}
+          usageCount={deleteDialogConfig.usageCount}
+          availableOptions={
+            deleteDialogConfig.type === 'platform' 
+              ? [
+                  ...['Cineby', 'LokLok', 'Movie Box', 'Netflix', 'SFlix', 'StreameX', 'Other'].map(p => ({ value: p, label: p })),
+                  ...customPlatformsDB.map(p => ({ value: p.name, label: p.name, isCustom: true }))
+                ]
+              : [
+                  ...Object.values(MediaType).map(t => ({ value: t, label: formatMediaType(t) })),
+                  ...customMediaTypesDB.map(t => ({ value: t.name, label: t.name, isCustom: true }))
+                ]
+          }
+          isDarkMode={isDarkMode}
+        />
+      )}
+
     </div>
   );
 }

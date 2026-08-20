@@ -1,6 +1,5 @@
+import { useData } from '../lib/data-context';
 import React, { useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { cn, formatMediaType, formatWatchStatus } from '../lib/utils';
 import { MediaType, WatchStatus } from '../types';
@@ -8,12 +7,13 @@ import { MediaType, WatchStatus } from '../types';
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
 export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
-  const entries = useLiveQuery(() => db.media.toArray());
-
+  const { entries, addEntry, putEntry, updateEntry, deleteEntry } = useData();
+  
   const stats = useMemo(() => {
     if (!entries) return null;
 
-    const typeCount = entries.reduce((acc, curr) => {
+    const validEntries = entries.filter(e => !e.deletedAt);
+    const typeCount = validEntries.reduce((acc, curr) => {
       acc[curr.type] = (acc[curr.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -23,7 +23,7 @@ export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
       value
     }));
 
-    const statusCount = entries.reduce((acc, curr) => {
+    const statusCount = validEntries.reduce((acc, curr) => {
       acc[curr.status] = (acc[curr.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -33,7 +33,7 @@ export function Statistics({ isDarkMode }: { isDarkMode: boolean }) {
       value
     }));
 
-    const ratingsCount = entries.reduce((acc, curr) => {
+    const ratingsCount = validEntries.reduce((acc, curr) => {
       const r = Math.floor(curr.rating).toString();
       acc[r] = (acc[r] || 0) + 1;
       return acc;
