@@ -29,5 +29,4 @@ Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the deployment pl
 src/                  React application
 server/               Express development and production server
 supabase/migrations/  Database schema and security policies
-scripts/archive/      Historical maintenance utilities
 ```
