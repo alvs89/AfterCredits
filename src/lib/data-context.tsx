@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import type { CustomOption, MediaEntry } from '../types';
+import type { CustomOption, EntryVersion, MediaEntry } from '../types';
 import { useAuth } from './auth-context';
 import { supabase } from './supabase';
 
@@ -11,11 +11,12 @@ interface DataContextType {
   editCustomOption: (oldValue: string, newName: string, type: 'platform' | 'mediaType') => Promise<void>;
   deleteCustomOption: (value: string, replacementValue: string | undefined, type: 'platform' | 'mediaType') => Promise<void>;
   checkOptionInUse: (value: string, type: 'platform' | 'mediaType') => number;
-  getVersions: (id: number) => Promise<any[]>; restoreFromTrash: (id: number) => Promise<void>; deleteEntryPermanently: (id: number) => Promise<void>;
+  getVersions: (id: number) => Promise<EntryVersion[]>; restoreVersion: (versionId: number) => Promise<MediaEntry>;
+  restoreFromTrash: (id: number) => Promise<void>; deleteEntryPermanently: (id: number) => Promise<void>;
 }
 
 const empty = async () => {};
-const DataContext = createContext<DataContextType>({ entries: [], customOptionsDB: [], loading: true, addEntry: empty, updateEntry: empty, deleteEntry: empty, putEntry: empty, addCustomOption: empty, editCustomOption: empty, deleteCustomOption: empty, checkOptionInUse: () => 0, getVersions: async () => [], restoreFromTrash: empty, deleteEntryPermanently: empty });
+const DataContext = createContext<DataContextType>({ entries: [], customOptionsDB: [], loading: true, addEntry: empty, updateEntry: empty, deleteEntry: empty, putEntry: empty, addCustomOption: empty, editCustomOption: empty, deleteCustomOption: empty, checkOptionInUse: () => 0, getVersions: async () => [], restoreVersion: async () => { throw new Error('Data provider is unavailable'); }, restoreFromTrash: empty, deleteEntryPermanently: empty });
 
 const fromRow = (r: any): MediaEntry => ({
   id: Number(r.id), title: r.title, type: r.type, status: r.status, rating: r.rating,
@@ -80,13 +81,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteEntry = async (id: number) => updateEntry(id, { deletedAt: new Date().toISOString() });
   const restoreFromTrash = async (id: number) => { const { data, error } = await supabase.from('media_entries').update({ deleted_at: null, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) throw error; setEntries(prev => prev.map(e => e.id === id ? fromRow(data) : e)); };
   const deleteEntryPermanently = async (id: number) => { const { error } = await supabase.from('media_entries').delete().eq('id', id); if (error) throw error; setEntries(prev => prev.filter(e => e.id !== id)); };
-  const getVersions = async (id: number) => { const { data, error } = await supabase.from('entry_versions').select('id,entry_id,timestamp,data').eq('entry_id', id).order('timestamp', { ascending: false }); if (error) throw error; return (data || []).map((v: any) => ({ id: Number(v.id), entryId: Number(v.entry_id), timestamp: v.timestamp, data: v.data })); };
+  const getVersions = useCallback(async (id: number): Promise<EntryVersion[]> => {
+    let { data, error } = await supabase
+      .from('entry_versions')
+      .select('id,entry_id,timestamp,data,revision_kind,restored_from_id')
+      .eq('entry_id', id)
+      .order('timestamp', { ascending: false })
+      .limit(200);
+    if (error?.code === '42703') {
+      const legacy = await supabase
+        .from('entry_versions')
+        .select('id,entry_id,timestamp,data')
+        .eq('entry_id', id)
+        .order('timestamp', { ascending: false })
+        .limit(200);
+      data = legacy.data as any;
+      error = legacy.error;
+    }
+    if (error) throw error;
+    return (data || []).map((version: any) => ({
+      id: Number(version.id),
+      entryId: Number(version.entry_id),
+      timestamp: version.timestamp,
+      data: version.data,
+      revisionKind: version.revision_kind || 'autosave',
+      restoredFromId: version.restored_from_id ? Number(version.restored_from_id) : undefined,
+    }));
+  }, []);
+
+  const restoreVersion = useCallback(async (versionId: number): Promise<MediaEntry> => {
+    if (!user) throw new Error('You must be signed in to restore a version.');
+    const { data, error } = await supabase.rpc('restore_media_version', { version_id: versionId }).single();
+    if (error) throw error;
+    const restored = fromRow(data);
+    setEntries(previous => previous.map(item => item.id === restored.id ? restored : item));
+    return restored;
+  }, [user]);
 
   const addCustomOption = async (name: string, type: 'platform' | 'mediaType') => { if (!user || !name.trim()) return; const value = name.trim(); const { data, error } = await supabase.from('custom_options').insert({ user_id: user.id, type, name: value, value }).select('id,type,name,value').single(); if (error) { if (error.code !== '23505') throw error; return; } setCustomOptionsDB(prev => [...prev, { ...data, id: Number(data.id) }]); };
   const editCustomOption = async (oldValue: string, newName: string, type: 'platform' | 'mediaType') => { const option = customOptionsDB.find(o => o.type === type && o.value === oldValue); if (!option?.id || !newName.trim()) return; const value = newName.trim(); const column = type === 'platform' ? 'platform' : 'type'; const { error } = await supabase.from('custom_options').update({ name: value, value }).eq('id', option.id); if (error) throw error; const media = await supabase.from('media_entries').update({ [column]: value, updated_at: new Date().toISOString() }).eq(column, oldValue); if (media.error) throw media.error; await fetchData(); };
   const deleteCustomOption = async (value: string, replacement: string | undefined, type: 'platform' | 'mediaType') => { const option = customOptionsDB.find(o => o.type === type && o.value === value); if (!option?.id) return; if (replacement) { const column = type === 'platform' ? 'platform' : 'type'; const media = await supabase.from('media_entries').update({ [column]: replacement, updated_at: new Date().toISOString() }).eq(column, value); if (media.error) throw media.error; } const { error } = await supabase.from('custom_options').delete().eq('id', option.id); if (error) throw error; await fetchData(); };
   const checkOptionInUse = (value: string, type: 'platform' | 'mediaType') => entries.filter(e => type === 'platform' ? e.platform === value : e.type === value).length;
 
-  return <DataContext.Provider value={{ entries, customOptionsDB, loading, addEntry, updateEntry, deleteEntry, putEntry, addCustomOption, editCustomOption, deleteCustomOption, checkOptionInUse, getVersions, restoreFromTrash, deleteEntryPermanently }}>{children}</DataContext.Provider>;
+  return <DataContext.Provider value={{ entries, customOptionsDB, loading, addEntry, updateEntry, deleteEntry, putEntry, addCustomOption, editCustomOption, deleteCustomOption, checkOptionInUse, getVersions, restoreVersion, restoreFromTrash, deleteEntryPermanently }}>{children}</DataContext.Provider>;
 };
 export const useData = () => useContext(DataContext);

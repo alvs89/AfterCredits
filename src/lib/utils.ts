@@ -12,6 +12,8 @@ export function formatMediaType(type: string): string {
 }
 
 export function formatWatchStatus(status: string): string {
+  if (status === 'plan_to_watch') return 'Plan to Watch';
+  if (status === 'on_hold') return 'On Hold';
   return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 

@@ -67,7 +67,8 @@ export interface MediaEntry {
 export interface EntryVersion {
   id: number;
   entryId: number;
-  userId: number;
   timestamp: string;
-  data: MediaEntry; // The complete snapshot
+  data: Record<string, unknown>;
+  revisionKind: 'initial' | 'autosave' | 'before_restore' | 'restore';
+  restoredFromId?: number;
 }

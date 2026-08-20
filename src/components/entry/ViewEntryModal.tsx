@@ -15,7 +15,7 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 import 'react-quill-new/dist/quill.snow.css';
 
 export function ViewEntryModal({ 
-  entry, 
+  entry: selectedEntry,
   isOpen, 
   onClose, 
   isDarkMode, 
@@ -28,6 +28,7 @@ export function ViewEntryModal({
   onEdit: (entry: MediaEntry) => void
 }) {
   const { entries, addEntry, putEntry, updateEntry, deleteEntry } = useData();
+  const entry = selectedEntry?.id ? entries.find(item => item.id === selectedEntry.id) || selectedEntry : selectedEntry;
   const [activeTab, setActiveTab] = useState<'summary' | 'review' | 'notes'>('summary');
   const [isMaximized, setIsMaximized] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export function ViewEntryModal({
   const [showHistory, setShowHistory] = useState(false);
   const isFirstRender = useRef(true);
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const previousEntryId = useRef<number | undefined>(undefined);
 
     const handleQuillClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target instanceof HTMLImageElement) {
@@ -54,6 +56,7 @@ export function ViewEntryModal({
     isFirstRender.current = true;
     setSaveStatus('');
     if (entry) {
+      const openedDifferentEntry = previousEntryId.current !== entry.id;
       setLocalSummary(entry.summary || '');
       setLocalReview(entry.review || '');
       setLocalNotes(entry.notes || '');
@@ -75,7 +78,8 @@ export function ViewEntryModal({
         }];
       }
       setLocalJournal(journals);
-      setCurrentJournalIndex(0);
+      setCurrentJournalIndex(current => openedDifferentEntry ? 0 : Math.min(current, Math.max(0, journals.length - 1)));
+      previousEntryId.current = entry.id;
     }
   }, [entry]);
 
@@ -202,15 +206,32 @@ export function ViewEntryModal({
     });
   };
 
-  const handleClose = async () => {
-    if (entry && entry.id) {
-       await updateEntry(entry.id, {
-          summary: localSummary,
-          notes: localNotes,
-          journal: localJournal,
-          updatedAt: new Date().toISOString()
-       } as any);
+  const flushCurrentContent = async () => {
+    if (!entry?.id) return;
+
+    if (autoSaveTimeout.current) {
+      clearTimeout(autoSaveTimeout.current);
+      autoSaveTimeout.current = null;
     }
+
+    setSaveStatus('Saving...');
+    await updateEntry(entry.id, {
+      summary: localSummary,
+      review: '',
+      notes: localNotes,
+      journal: localJournal,
+      updatedAt: new Date().toISOString()
+    });
+    setSaveStatus('Saved');
+  };
+
+  const handleOpenHistory = async () => {
+    await flushCurrentContent();
+    setShowHistory(true);
+  };
+
+  const handleClose = async () => {
+    await flushCurrentContent();
     onClose();
   };
 
@@ -294,7 +315,7 @@ export function ViewEntryModal({
               <Edit2 className="w-4 h-4" /> Edit Entry
             </button>
             <button 
-              onClick={() => setShowHistory(true)}
+              onClick={() => void handleOpenHistory()}
               className={cn("w-full px-4 py-2.5 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors border", isDarkMode ? "bg-white/5 hover:bg-white/10 text-white border-white/10" : "bg-white hover:bg-neutral-50 text-neutral-900 border-neutral-200 shadow-sm")}
             >
               <History className="w-4 h-4" /> Version History
@@ -458,11 +479,9 @@ export function ViewEntryModal({
 
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={async () => {
-                          await updateEntry(entry.id!, { journal: localJournal } as any);
-                          setCurrentJournalIndex(Math.max(0, currentJournalIndex - 1));
-                        }}
+                        onClick={() => setCurrentJournalIndex(current => Math.max(0, current - 1))}
                         disabled={currentJournalIndex === 0}
+                        aria-label="Previous journal page"
                         className="p-1.5 rounded hover:bg-neutral-500/20 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -471,11 +490,9 @@ export function ViewEntryModal({
                         {currentJournalIndex + 1} / {Math.max(1, localJournal.length)}
                       </span>
                       <button 
-                        onClick={async () => {
-                          await updateEntry(entry.id!, { journal: localJournal } as any);
-                          setCurrentJournalIndex(Math.min(localJournal.length - 1, currentJournalIndex + 1));
-                        }}
+                        onClick={() => setCurrentJournalIndex(current => Math.min(localJournal.length - 1, current + 1))}
                         disabled={currentJournalIndex === localJournal.length - 1 || localJournal.length === 0}
+                        aria-label="Next journal page"
                         className="p-1.5 rounded hover:bg-neutral-500/20 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -588,6 +605,12 @@ export function ViewEntryModal({
           isOpen={showHistory}
           onClose={() => setShowHistory(false)}
           entry={entry}
+          onRestoreStart={() => {
+            if (autoSaveTimeout.current) {
+              clearTimeout(autoSaveTimeout.current);
+              autoSaveTimeout.current = null;
+            }
+          }}
           isDarkMode={isDarkMode}
         />
       )}
