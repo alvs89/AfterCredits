@@ -4,6 +4,7 @@ export enum MediaType {
   KDrama = 'k_drama',
   Anime = 'anime',
   Documentary = 'documentary',
+  ConcertFilm = 'concert_film',
   Other = 'other'
 }
 
@@ -14,6 +15,13 @@ export enum WatchStatus {
   OnHold = 'on_hold',
   Dropped = 'dropped',
   Rewatching = 'rewatching'
+}
+
+export interface CustomOption {
+  id?: number;
+  type: 'platform' | 'mediaType';
+  name: string;
+  value: string;
 }
 
 export interface JournalEntry {
@@ -30,8 +38,14 @@ export interface MediaEntry {
   type: MediaType;
   status: WatchStatus;
   rating: number; // 0 to 10
-  posterBlob?: Blob; 
+  posterBase64?: string; 
   posterUrl?: string; // Cache url for object url
+  originalPosterBase64?: string;
+  cropData?: {
+    crop: { x: number; y: number };
+    zoom: number;
+    croppedAreaPixels: { x: number; y: number; width: number; height: number } | null;
+  };
   summary: string;
   review: string;
   notes: string;
@@ -45,4 +59,15 @@ export interface MediaEntry {
   createdAt: string;
   updatedAt: string;
   favorite: boolean;
+  deletedAt?: string;
+  lastViewedAt?: string;
+}
+
+
+export interface EntryVersion {
+  id: number;
+  entryId: number;
+  userId: number;
+  timestamp: string;
+  data: MediaEntry; // The complete snapshot
 }

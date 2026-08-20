@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+data/
+
+# Local one-off maintenance scripts
+check_logs*.js
+check_logs*.cjs
+fix*.cjs
+patch*.cjs
+test_*.cjs
+update_*.cjs

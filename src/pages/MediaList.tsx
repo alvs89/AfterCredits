@@ -1,6 +1,6 @@
+import { useData } from '../lib/data-context';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { useCustomOptions } from '../hooks/useCustomOptions';
 import { Search, Filter, Star, Eye, Heart, MoreVertical, Edit2, Trash2, Calendar, ArrowUpDown } from 'lucide-react';
 
 import { StarRating } from "../components/common/StarRating";
@@ -39,9 +39,11 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'status-asc', label: 'Watch Status' }
 ];
 
-export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMode: boolean, showOnlyFavorites?: boolean }) {
+export function MediaList({ isDarkMode, showOnlyFavorites = false, isTrash = false }: { isDarkMode: boolean, showOnlyFavorites?: boolean, isTrash?: boolean }) {
+  const { entries, addEntry, putEntry, updateEntry, deleteEntry, deleteEntryPermanently, restoreFromTrash } = useData();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<MediaType | 'all'>('all');
+    const [filterType, setFilterType] = useState<string | 'all'>('all');
+  const { options: customMediaTypesDB } = useCustomOptions('mediaType');
   const [filterStatus, setFilterStatus] = useState<WatchStatus | 'all'>('all');
   const [sortOption, setSortOption] = useState<SortOption>(() => {
     return (sessionStorage.getItem('aftercredits_sort') as SortOption) || 'last-updated-desc';
@@ -54,7 +56,12 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
     sessionStorage.setItem('aftercredits_sort', sortOption);
   }, [sortOption]);
 
-  const rawEntries = useLiveQuery(() => db.media.toArray());
+  const rawEntries = useMemo(() => {
+    return entries.filter(e => {
+      if (isTrash) return !!e.deletedAt;
+      return !e.deletedAt;
+    });
+  }, [entries, isTrash]);
 
   const stripHtml = (html: string) => {
     const tmp = document.createElement("DIV");
@@ -65,7 +72,7 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
     return text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
   };
 
-  const entries = useMemo(() => {
+  const filteredEntries = useMemo(() => {
     if (!rawEntries) return undefined;
     let filtered = rawEntries.filter(entry => {
       const searchLower = searchQuery.toLowerCase().replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
@@ -134,14 +141,14 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
   
   const confirmDelete = async () => {
     if (entryToDelete) {
-      await db.media.delete(entryToDelete);
+      await deleteEntry(entryToDelete);
       setEntryToDelete(null);
     }
   };
 
   const toggleFavorite = async (entry: MediaEntry) => {
     if (entry.id) {
-      await db.media.update(entry.id, { favorite: !entry.favorite });
+      await updateEntry(entry.id, { favorite: !entry.favorite });
     }
   };
 
@@ -176,13 +183,14 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
           />
           <SearchableDropdown 
             value={filterType}
-            onChange={(val) => setFilterType(val as any)}
+            onChange={(val) => setFilterType(val)}
             isDarkMode={isDarkMode}
             className="w-full sm:w-36 font-bold text-xs"
-            options={[
+            options={Array.from(new Map([
               { value: 'all', label: 'All Types' },
-              ...Object.values(MediaType).map(t => ({ value: t, label: formatMediaType(t) }))
-            ]}
+              ...Object.values(MediaType).map(t => ({ value: t, label: formatMediaType(t) })),
+              ...customMediaTypesDB.map(t => ({ value: t.value, label: t.name, isEditable: true }))
+            ].map(item => [item.value, item])).values())}
           />
           <SearchableDropdown 
             value={filterStatus}
@@ -198,7 +206,7 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {entries?.map(entry => (
+        {filteredEntries?.map(entry => (
             <div 
               key={entry.id}
               onClick={() => setViewingEntry(entry)}
@@ -208,8 +216,8 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
               )}
             >
               <div className={cn("aspect-[2/3] w-full rounded-lg mb-4 overflow-hidden relative flex items-center justify-center font-sans font-bold text-xl", isDarkMode ? "bg-[#1A1D24] text-white/70" : "bg-neutral-100 text-neutral-600")}>
-                {entry.posterBlob ? (
-                  <img src={URL.createObjectURL(entry.posterBlob)} alt={entry.title} className="w-full h-full object-cover" />
+                {entry.posterBase64 ? (
+                  <img src={entry.posterBase64} alt={entry.title} className="w-full h-full object-cover" />
                 ) : (
                   <span className="px-4 text-center">{entry.title}</span>
                 )}
@@ -260,33 +268,36 @@ export function MediaList({ isDarkMode, showOnlyFavorites = false }: { isDarkMod
               </div>
               
               <h3 className={cn("font-bold text-sm leading-tight line-clamp-1 mb-1", isDarkMode ? "text-white" : "text-neutral-900")}>{entry.title}</h3>
-              <div className="mt-auto flex flex-col gap-1 pt-2">
+              <div className="mt-auto flex flex-col w-full">
+                <div className="flex flex-col gap-1 pt-2">
                   <div className={cn("flex items-center justify-between text-[10px]", isDarkMode ? "text-white/60" : "text-neutral-600")}>
                     <span>{entry.platform || 'Unknown'}</span>
                     <span>{formatWatchStatus(entry.status)}</span>
                   </div>
-                  {(entry.dateStarted || entry.dateCompleted) && (
-                    <div className={cn("flex items-center gap-1.5 text-[10px] mt-1", isDarkMode ? "text-white/60" : "text-neutral-600")}>
-                      <Calendar className="w-3 h-3 opacity-60 shrink-0" />
-                      <span className="truncate">
-                        {entry.dateStarted ? new Date(entry.dateStarted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '?'}
-                        {' – '}
-                        {entry.dateCompleted ? new Date(entry.dateCompleted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Present'}
-                      </span>
-                    </div>
-                  )}
+                  <div className={cn("flex items-center gap-1.5 text-[10px] mt-1 min-h-[16px]", isDarkMode ? "text-white/60" : "text-neutral-600")}>
+                    {(entry.dateStarted || entry.dateCompleted) ? (
+                      <>
+                        <Calendar className="w-3 h-3 opacity-60 shrink-0" />
+                        <span className="truncate">
+                          {entry.dateStarted ? new Date(entry.dateStarted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '?'}
+                          {' – '}
+                          {entry.dateCompleted ? new Date(entry.dateCompleted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Present'}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-              {entry.genres && entry.genres.length > 0 && (
-                <div className={cn("flex gap-1 mt-2 overflow-hidden flex-wrap pt-3 border-t", isDarkMode ? "border-white/5" : "border-neutral-200")}>
-                  {entry.genres.slice(0,3).map(g => (
+
+                <div className={cn("flex gap-1 mt-2 overflow-hidden flex-wrap pt-3 border-t min-h-[41px]", isDarkMode ? "border-white/5" : "border-neutral-200", (!entry.genres || entry.genres.length === 0) && "border-transparent")}>
+                  {entry.genres && entry.genres.slice(0,3).map(g => (
                     <span key={g} className={cn("text-[9px] px-2 py-1 rounded border", isDarkMode ? "bg-white/5 border-white/10 text-white/70" : "bg-neutral-100 border-neutral-200 text-neutral-600")}>{g}</span>
                   ))}
-                  {entry.genres.length > 3 && <span className={cn("text-[9px] px-2 py-1 rounded border", isDarkMode ? "bg-white/5 border-white/10 text-white/70" : "bg-neutral-100 border-neutral-200 text-neutral-600")}>+{entry.genres.length - 3}</span>}
+                  {entry.genres && entry.genres.length > 3 && <span className={cn("text-[9px] px-2 py-1 rounded border", isDarkMode ? "bg-white/5 border-white/10 text-white/70" : "bg-neutral-100 border-neutral-200 text-neutral-600")}>+{entry.genres.length - 3}</span>}
                 </div>
-              )}
+              </div>
             </div>
           ))}
-          {entries?.length === 0 && (
+          {filteredEntries?.length === 0 && (
           <div className="col-span-full py-12 text-center text-white/60">
             No entries found matching your criteria.
           </div>

@@ -1,9 +1,9 @@
+import { useData } from '../../lib/data-context';
 import React, { useState, useEffect, useRef } from 'react';
 import { MediaEntry, JournalEntry } from '../../types';
-import { Heart, X, Star, Calendar, Edit2, Save, Maximize2, Minimize2, ChevronLeft, ChevronRight, Plus, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Heart, X, Star, Calendar, Edit2, Save, Maximize2, Minimize2, ChevronLeft, ChevronRight, Plus, Trash2, ArrowLeft, ArrowRight, History } from 'lucide-react';
 import { StarRating } from "../common/StarRating";
 import { cn, formatMediaType, formatWatchStatus } from '../../lib/utils';
-import { db } from '../../db/db';
 import ReactQuill, { Quill } from 'react-quill-new';
 
 const ColorStyle = Quill.import('attributors/style/color') as any;
@@ -11,6 +11,7 @@ const BackgroundStyle = Quill.import('attributors/style/background') as any;
 Quill.register(ColorStyle, true);
 Quill.register(BackgroundStyle, true);
 import { ConfirmModal } from '../common/ConfirmModal';
+import { VersionHistoryModal } from './VersionHistoryModal';
 import 'react-quill-new/dist/quill.snow.css';
 
 export function ViewEntryModal({ 
@@ -26,6 +27,7 @@ export function ViewEntryModal({
   isDarkMode: boolean,
   onEdit: (entry: MediaEntry) => void
 }) {
+  const { entries, addEntry, putEntry, updateEntry, deleteEntry } = useData();
   const [activeTab, setActiveTab] = useState<'summary' | 'review' | 'notes'>('summary');
   const [isMaximized, setIsMaximized] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ViewEntryModal({
   const [currentJournalIndex, setCurrentJournalIndex] = useState(0);
   const [saveStatus, setSaveStatus] = useState<'' | 'Saving...' | 'Saved'>('');
   const [journalPageToDelete, setJournalPageToDelete] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const isFirstRender = useRef(true);
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -92,7 +95,7 @@ export function ViewEntryModal({
     }
     
     autoSaveTimeout.current = setTimeout(async () => {
-      await db.media.update(entry.id!, {
+      await updateEntry(entry.id!, {
         summary: localSummary,
         notes: localNotes,
         journal: localJournal,
@@ -118,7 +121,7 @@ export function ViewEntryModal({
       content
     };
     setLocalJournal(updatedJournal);
-    await db.media.update(entry.id, {
+    await updateEntry(entry.id, {
       journal: updatedJournal,
       review: '', // clear old review
       updatedAt: new Date().toISOString()
@@ -136,7 +139,7 @@ export function ViewEntryModal({
     const updatedJournal = [...localJournal, newPage];
     setLocalJournal(updatedJournal);
     setCurrentJournalIndex(updatedJournal.length - 1);
-    await db.media.update(entry.id, {
+    await updateEntry(entry.id, {
       journal: updatedJournal,
       updatedAt: new Date().toISOString()
     });
@@ -153,7 +156,7 @@ export function ViewEntryModal({
     if (localJournal.length <= 1) {
       const updatedJournal = [{ ...localJournal[0], content: '', title: 'Page 1' }];
       setLocalJournal(updatedJournal);
-      await db.media.update(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
+      await updateEntry(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
       setJournalPageToDelete(null);
       return;
     }
@@ -163,7 +166,7 @@ export function ViewEntryModal({
     if (currentJournalIndex >= updatedJournal.length) {
       setCurrentJournalIndex(Math.max(0, updatedJournal.length - 1));
     }
-    await db.media.update(entry.id, {
+    await updateEntry(entry.id, {
       journal: updatedJournal,
       updatedAt: new Date().toISOString()
     });
@@ -178,13 +181,13 @@ export function ViewEntryModal({
       [updatedJournal[index - 1], updatedJournal[index]] = [updatedJournal[index], updatedJournal[index - 1]];
       setLocalJournal(updatedJournal);
       setCurrentJournalIndex(index - 1);
-      await db.media.update(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
+      await updateEntry(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
     } else if (direction === 'right' && index < localJournal.length - 1) {
       const updatedJournal = [...localJournal];
       [updatedJournal[index], updatedJournal[index + 1]] = [updatedJournal[index + 1], updatedJournal[index]];
       setLocalJournal(updatedJournal);
       setCurrentJournalIndex(index + 1);
-      await db.media.update(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
+      await updateEntry(entry.id, { journal: updatedJournal, updatedAt: new Date().toISOString() });
     }
   };
 
@@ -193,7 +196,7 @@ export function ViewEntryModal({
     const updatedJournal = [...localJournal];
     updatedJournal[index] = { ...updatedJournal[index], ...updates };
     setLocalJournal(updatedJournal);
-    await db.media.update(entry.id, {
+    await updateEntry(entry.id, {
       journal: updatedJournal,
       updatedAt: new Date().toISOString()
     });
@@ -201,7 +204,7 @@ export function ViewEntryModal({
 
   const handleClose = async () => {
     if (entry && entry.id) {
-       await db.media.update(entry.id, {
+       await updateEntry(entry.id, {
           summary: localSummary,
           notes: localNotes,
           journal: localJournal,
@@ -214,7 +217,7 @@ export function ViewEntryModal({
   const handleSave = async (field: 'summary' | 'review' | 'notes', value: string) => {
     if (entry && entry.id) {
       if (entry[field] !== value) {
-        await db.media.update(entry.id, { 
+        await updateEntry(entry.id, { 
           [field]: value, 
           updatedAt: new Date().toISOString() 
         } as any);
@@ -245,8 +248,8 @@ export function ViewEntryModal({
         {/* Poster Sidebar */}
         <div className={cn("w-full md:w-[300px] shrink-0 relative flex flex-col border-r", isDarkMode ? "bg-[#1A1D24] border-white/5" : "bg-neutral-50 border-neutral-200")}>
           <div className="aspect-[2/3] w-full relative">
-            {entry.posterBlob ? (
-              <img src={URL.createObjectURL(entry.posterBlob)} alt={entry.title} className="w-full h-full object-cover" />
+            {entry.posterBase64 ? (
+              <img src={entry.posterBase64} alt={entry.title} className="w-full h-full object-cover" />
             ) : (
               <div className={cn("w-full h-full flex items-center justify-center font-sans font-semibold text-xl px-4 text-center", isDarkMode ? "text-white/70" : "text-neutral-600")}>
                 {entry.title}
@@ -263,7 +266,7 @@ export function ViewEntryModal({
                 onClick={async (e) => { 
                   e.stopPropagation(); 
                   const updated = { ...entry, favorite: !entry.favorite, updatedAt: new Date().toISOString() };
-                  await db.media.put(updated);
+                  await putEntry(updated);
                   onClose();
                 }}
                 className="p-1.5 rounded bg-[#0A0B0E]/80 backdrop-blur-md transition-colors hover:bg-white/20 border border-white/10 shadow-sm flex items-center justify-center"
@@ -289,6 +292,12 @@ export function ViewEntryModal({
               className={cn("w-full px-4 py-2.5 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors border", isDarkMode ? "bg-white/5 hover:bg-white/10 text-white border-white/10" : "bg-white hover:bg-neutral-50 text-neutral-900 border-neutral-200 shadow-sm")}
             >
               <Edit2 className="w-4 h-4" /> Edit Entry
+            </button>
+            <button 
+              onClick={() => setShowHistory(true)}
+              className={cn("w-full px-4 py-2.5 rounded text-xs font-semibold flex items-center justify-center gap-2 transition-colors border", isDarkMode ? "bg-white/5 hover:bg-white/10 text-white border-white/10" : "bg-white hover:bg-neutral-50 text-neutral-900 border-neutral-200 shadow-sm")}
+            >
+              <History className="w-4 h-4" /> Version History
             </button>
             
             <div className="space-y-3">
@@ -450,7 +459,7 @@ export function ViewEntryModal({
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={async () => {
-                          await db.media.update(entry.id!, { journal: localJournal } as any);
+                          await updateEntry(entry.id!, { journal: localJournal } as any);
                           setCurrentJournalIndex(Math.max(0, currentJournalIndex - 1));
                         }}
                         disabled={currentJournalIndex === 0}
@@ -463,7 +472,7 @@ export function ViewEntryModal({
                       </span>
                       <button 
                         onClick={async () => {
-                          await db.media.update(entry.id!, { journal: localJournal } as any);
+                          await updateEntry(entry.id!, { journal: localJournal } as any);
                           setCurrentJournalIndex(Math.min(localJournal.length - 1, currentJournalIndex + 1));
                         }}
                         disabled={currentJournalIndex === localJournal.length - 1 || localJournal.length === 0}
@@ -574,6 +583,14 @@ export function ViewEntryModal({
         message="Are you sure you want to delete this journal page? This action cannot be undone."
         isDarkMode={isDarkMode}
       />
+      {showHistory && (
+        <VersionHistoryModal
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          entry={entry}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </>
   );
 }

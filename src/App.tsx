@@ -7,19 +7,28 @@ import {
   Moon, 
   Sun,
   Plus,
-  Heart
+  Heart,
+  LogIn,
+  LogOut, Trash2
 } from 'lucide-react';
 import { cn } from './lib/utils';
+import { useAuth } from './lib/auth-context';
 import { Dashboard } from './pages/Dashboard';
 import { MediaList } from './pages/MediaList';
 import { Statistics } from './pages/Statistics';
 import { AddEntryModal } from './components/entry/AddEntryModal';
+import { SignOutModal } from './components/auth/SignOutModal';
+import { UserAvatar } from './components/auth/UserAvatar';
+import { SettingsPage } from './pages/Settings';
+import { getProfileAvatar, getProfileName } from './lib/profile';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'favorites' | 'stats'>('dashboard');
+  const { user, signIn, logOut, loading, authPending, authError } = useAuth();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'favorites' | 'stats' | 'trash' | 'settings'>('dashboard');
 
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -84,6 +93,13 @@ export default function App() {
             onClick={() => setActiveTab('favorites')} 
             isDarkMode={isDarkMode}
           />
+          <NavItem 
+            icon={<Trash2 className="w-5 h-5" />} 
+            label="Trash" 
+            isActive={activeTab === 'trash'} 
+            onClick={() => setActiveTab('trash')} 
+            isDarkMode={isDarkMode}
+          />
           <div className="text-[10px] uppercase tracking-[0.2em] opacity-70 mb-2 px-2 mt-6">System</div>
           <NavItem 
             icon={<BarChart3 className="w-5 h-5" />} 
@@ -92,18 +108,61 @@ export default function App() {
             onClick={() => setActiveTab('stats')} 
             isDarkMode={isDarkMode}
           />
+          <NavItem
+            icon={<Settings className="w-5 h-5" />}
+            label="Settings"
+            isActive={activeTab === 'settings'}
+            onClick={() => setActiveTab('settings')}
+            isDarkMode={isDarkMode}
+          />
         </nav>
 
-        <div className="p-6 border-t border-white/5 flex items-center justify-between">
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={cn(
-              "p-2 rounded-lg transition-colors",
-              isDarkMode ? "hover:bg-white/5 text-white/70 hover:text-white" : "hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900"
-            )}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+        <div className="p-6 border-t flex flex-col gap-4 border-white/5">
+          {!loading && user ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 px-2">
+                <UserAvatar
+                  name={getProfileName(user)}
+                  src={getProfileAvatar(user)}
+                />
+                <span className={cn("text-sm font-medium truncate", isDarkMode ? "text-white" : "text-neutral-900")}>{getProfileName(user)}</span>
+              </div>
+              <button
+                onClick={() => setIsSignOutModalOpen(true)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors text-xs border w-full justify-center",
+                  isDarkMode ? "border-white/10 hover:bg-white/5 text-white/70 hover:text-white" : "border-neutral-200 hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900"
+                )}
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
+          ) : !loading && (
+            <button
+              onClick={signIn}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-md font-semibold transition-colors text-xs w-full justify-center",
+                isDarkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-neutral-900 hover:bg-neutral-800 text-white"
+              )}
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </button>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className={cn("text-xs font-medium px-2", isDarkMode ? "text-white/70" : "text-neutral-600")}>Theme</span>
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                isDarkMode ? "hover:bg-white/5 text-white/70 hover:text-white" : "hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900"
+              )}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -116,24 +175,59 @@ export default function App() {
           <h1  className={cn("text-2xl font-bold tracking-tight ", isDarkMode ? "text-[#3B82F6]" : "text-neutral-800 ")}>
             {activeTab === 'stats' ? 'Statistics' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
           </h1>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded font-semibold transition-colors text-xs",
-              isDarkMode ? "bg-[#3B82F6] hover:bg-[#2563EB] text-[#0A0B0E]" : "bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-full"
+          <div className="flex items-center gap-4">
+            {user && (
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded font-semibold transition-colors text-xs",
+                  isDarkMode ? "bg-[#3B82F6] hover:bg-[#2563EB] text-[#0A0B0E]" : "bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-full"
+                )}
+              >
+                <Plus className="w-4 h-4" />
+                Add Entry
+              </button>
             )}
-          >
-            <Plus className="w-4 h-4" />
-            Add Entry
-          </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-8 relative">
           <div className="max-w-6xl mx-auto w-full h-full">
-            {activeTab === 'dashboard' && <Dashboard isDarkMode={isDarkMode} onNavigate={(tab) => setActiveTab(tab as any)} onAdd={() => setIsAddModalOpen(true)} />}
-            {activeTab === 'library' && <MediaList isDarkMode={isDarkMode} />}
-            {activeTab === 'favorites' && <MediaList isDarkMode={isDarkMode} showOnlyFavorites={true} />}
-            {activeTab === 'stats' && <Statistics isDarkMode={isDarkMode} />}
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className={cn("text-lg font-medium animate-pulse", isDarkMode ? "text-white/50" : "text-neutral-500")}>Loading...</div>
+              </div>
+            ) : !user ? (
+              <div className="flex flex-col items-center justify-center h-[60vh] gap-6 text-center max-w-md mx-auto">
+                <div className="w-20 h-20 rounded-2xl bg-[#3B82F6]/10 flex items-center justify-center">
+                  <Library className="w-10 h-10 text-[#3B82F6]" />
+                </div>
+                <div>
+                  <h2 className={cn("text-2xl font-bold mb-2", isDarkMode ? "text-white" : "text-neutral-900")}>Your Media Library</h2>
+                  <p className={cn("text-sm", isDarkMode ? "text-white/60" : "text-neutral-600")}>
+                    Sign in to track your movies, series, and anime across all your devices securely.
+                  </p>
+                </div>
+                <button
+                  onClick={signIn}
+                  disabled={authPending}
+                  className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold transition-colors text-sm bg-[#3B82F6] hover:bg-[#2563EB] text-white"
+                >
+                  <LogIn className="w-5 h-5" />
+                  {authPending ? 'Opening Google…' : 'Sign In with Google'}
+                </button>
+                {authError && <p role="alert" className="text-sm text-red-400 max-w-lg">{authError}</p>}
+              </div>
+            ) : (
+              <>
+                {activeTab === 'dashboard' && <Dashboard isDarkMode={isDarkMode} onNavigate={(tab) => setActiveTab(tab as any)} onAdd={() => setIsAddModalOpen(true)} />}
+                {activeTab === 'library' && <MediaList isDarkMode={isDarkMode} />}
+                {activeTab === 'favorites' && <MediaList isDarkMode={isDarkMode} showOnlyFavorites={true} />}
+                {activeTab === 'trash' && <MediaList isDarkMode={isDarkMode} isTrash={true} />}
+                {activeTab === 'stats' && <Statistics isDarkMode={isDarkMode} />}
+                {activeTab === 'settings' && <SettingsPage isDarkMode={isDarkMode} />}
+              </>
+            )}
           </div>
         </div>
       </main>
@@ -145,6 +239,13 @@ export default function App() {
           isDarkMode={isDarkMode} 
         />
       )}
+
+      <SignOutModal 
+        isOpen={isSignOutModalOpen}
+        onClose={() => setIsSignOutModalOpen(false)}
+        onConfirm={logOut}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 }
